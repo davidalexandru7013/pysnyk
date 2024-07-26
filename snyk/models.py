@@ -132,12 +132,6 @@ class IssueSetAggregated(DataClassJSONMixin):
 
 
 @dataclass
-class OrganizationGroup(DataClassJSONMixin):
-    name: str
-    id: str
-
-
-@dataclass
 class Package(DataClassJSONMixin):
     name: str
     version: Optional[str] = None
@@ -157,16 +151,28 @@ class IssueRelations:
     organization_id: str
     project_id: str
 
+@dataclass
+class OrganizationAttributes(DataClassJSONMixin):
+    name: str
+    slug: str
+    is_personal: bool
+    created_at: Optional[str] = None
+    group_id: Optional[str] = None
+    access_requests_enables: Optional[bool] = None
+    updated_at: Optional[str] = None
+
+
+@dataclass
+class OrganizationRelationships(DataClassJSONMixin):
+    member_role: Optional[Any] = None
+
 
 @dataclass
 class Organization(DataClassJSONMixin):
-    name: str
-    id: str
-    slug: str
-    url: str
-    group: Optional[OrganizationGroup] = None
+    attributes: OrganizationAttributes
+    relationships: Optional[OrganizationRelationships] = None
     client: Optional[Any] = None
-
+    id: str
     @property
     def projects(self) -> Manager:
         return Manager.factory(Project, self.client, self)
@@ -687,7 +693,7 @@ class Project(DataClassJSONMixin):
             )
             if tenant_matches:
                 # If a tenant is found, insert it into the URL
-                url_prefix = f"https://app.{match.group(1)}.snyk.io"
+                url_prefix = f"https://app.{match.relationships(1)}.snyk.io"
             else:
                 # If no tenant is found, use a default URL
                 url_prefix = "https://app.snyk.io"

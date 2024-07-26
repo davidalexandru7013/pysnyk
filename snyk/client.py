@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class SnykClient(object):
-    API_URL = "https://api.snyk.io/v1"
-    REST_API_URL = "https://api.snyk.io/rest"
+    API_URL = "https://app.dev.snyk.io/api/v1"
+    REST_API_URL = "https://app.dev.snyk.io/api/rest"
     USER_AGENT = "pysnyk/%s" % __version__
 
     def __init__(
@@ -150,7 +150,7 @@ class SnykClient(object):
             else:
                 url = f"{self.rest_api_url}/{path}?version={version}"
         else:
-            url = f"{self.api_url}/{path}"
+            url = f"{self.rest_api_url}/{path}"
 
         if (params or self.version) and not exclude_params:
 
