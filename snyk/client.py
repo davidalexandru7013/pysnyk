@@ -6,6 +6,8 @@ from urllib.parse import parse_qs, urlparse
 import requests
 from retry.api import retry_call
 
+from snyk.query_params import AbstractQueryParams
+
 from .__version__ import __version__
 from .errors import SnykHTTPError, SnykNotImplementedError
 from .managers import Manager
@@ -125,7 +127,7 @@ class SnykClient(object):
     def get(
         self,
         path: str,
-        params: dict = None,
+        params: dict[str, Any] = None,
         version: str = None,
         exclude_version: bool = False,
         exclude_params: bool = False,
@@ -152,26 +154,25 @@ class SnykClient(object):
         else:
             url = f"{self.rest_api_url}/{path}"
 
-        if (params or self.version) and not exclude_params:
+        #if (params or self.version) and not exclude_params:
 
-            if not params:
-                params = {}
+        if params and not exclude_params:
 
             # we use the presence of version to determine if we are REST or not
-            if "version" not in params.keys() and self.version and not exclude_version:
-                params["version"] = version or self.version
+            # if "version" not in params.keys() and self.version and not exclude_version:
+            #     params["version"] = version or self.version
 
             # Python Bools are True/False, JS Bools are true/false
             # Snyk REST API is strictly case sensitive at the moment
 
-            for k, v in params.items():
-                if isinstance(v, bool):
-                    params[k] = str(v).lower()
+            # for k, v in params.items():
+            #     if isinstance(v, bool):
+            #         params[k] = str(v).lower()
 
             # the limit is returned in the url, and if two limits are passed
             # the API interprets as an array and throws an error
-            if "limit" in parse_qs(urlparse(path).query):
-                params.pop("limit", None)
+            # if "limit" in parse_qs(urlparse(path).query):
+            #     params.pop("limit", None)
 
             debug_url = f"{url}&{urllib.parse.urlencode(params)}"
             fkwargs = {"headers": self.api_headers, "params": params}

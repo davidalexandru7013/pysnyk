@@ -109,8 +109,10 @@ class OrganizationManager(Manager):
     def all(self):
         resp = self.client.get("orgs")
         orgs = []
-        if "orgs" in resp.json():
-            for org_data in resp.json()["orgs"]:
+        orgs_data = "data"
+        response_json = resp.json()
+        if orgs_data in response_json:
+            for org_data in response_json[orgs_data]:
                 orgs.append(self.klass.from_dict(org_data))
         for org in orgs:
             org.client = self.client

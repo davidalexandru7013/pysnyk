@@ -151,6 +151,7 @@ class IssueRelations:
     organization_id: str
     project_id: str
 
+
 @dataclass
 class OrganizationAttributes(DataClassJSONMixin):
     name: str
@@ -163,16 +164,34 @@ class OrganizationAttributes(DataClassJSONMixin):
 
 
 @dataclass
+class MemberRoleAttributes:
+    name: Optional[str]
+
+
+@dataclass
+class MemberRoleData:
+    id: str
+    type: str
+    attributes: Optional[MemberRoleAttributes] = None
+    
+
+@dataclass 
+class RelationshipMemberRole:
+    data: MemberRoleData
+    
+
+@dataclass
 class OrganizationRelationships(DataClassJSONMixin):
-    member_role: Optional[Any] = None
+    member_role: Optional[RelationshipMemberRole] = None
 
 
 @dataclass
 class Organization(DataClassJSONMixin):
     attributes: OrganizationAttributes
-    relationships: Optional[OrganizationRelationships] = None
-    client: Optional[Any] = None
     id: str
+    type: str
+    relationships: Optional[OrganizationRelationships] = None
+    
     @property
     def projects(self) -> Manager:
         return Manager.factory(Project, self.client, self)
