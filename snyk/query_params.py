@@ -1,17 +1,9 @@
-import abc
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from .enums import BusinessCriticality, Enviroment, Lifecycle, MetaCount
 
-
-class AbstractQueryParams(abc.ABC):
-    @abc.abstractmethod
-    def get_as_query_params(self) -> str:
-        pass  # pragma: no cover
-
-
 @dataclass
-class ProjectsQueryParams(AbstractQueryParams):
+class ProjectsQueryParams:
     target_id: Optional[List[str]] = None
     target_reference: Optional[str] = None
     target_file: Optional[str] = None

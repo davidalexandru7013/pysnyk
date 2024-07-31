@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import requests
 from deprecation import deprecated  # type: ignore
-from mashumaro.mixins.json import DataClassJSONMixin  # type: ignore
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from .errors import SnykError, SnykNotImplementedError
 from .managers import Manager
@@ -164,21 +164,21 @@ class OrganizationAttributes(DataClassJSONMixin):
 
 
 @dataclass
-class MemberRoleAttributes:
+class MemberRoleAttributes(DataClassJSONMixin):
     name: Optional[str]
 
 
 @dataclass
-class MemberRoleData:
+class MemberRoleData(DataClassJSONMixin):
     id: str
     type: str
     attributes: Optional[MemberRoleAttributes] = None
-    
 
-@dataclass 
-class RelationshipMemberRole:
+
+@dataclass
+class RelationshipMemberRole(DataClassJSONMixin):
     data: MemberRoleData
-    
+
 
 @dataclass
 class OrganizationRelationships(DataClassJSONMixin):
@@ -191,7 +191,7 @@ class Organization(DataClassJSONMixin):
     id: str
     type: str
     relationships: Optional[OrganizationRelationships] = None
-    
+
     @property
     def projects(self) -> Manager:
         return Manager.factory(Project, self.client, self)
@@ -313,7 +313,7 @@ class Organization(DataClassJSONMixin):
         return IssueSet.from_dict(resp.json())
 
     def test_maven(
-        self, package_group_id: str, package_artifact_id: str, version: str
+            self, package_group_id: str, package_artifact_id: str, version: str
     ) -> IssueSet:
         path = "test/maven/%s/%s/%s?org=%s" % (
             package_group_id,
@@ -419,7 +419,7 @@ class Integration(DataClassJSONMixin):
         return bool(self.organization.client.post(path, payload))
 
     def import_git(
-        self, owner: str, name: str, branch: str = "master", files: List[str] = []
+            self, owner: str, name: str, branch: str = "master", files: List[str] = []
     ):
         return self._import(
             {
@@ -443,7 +443,7 @@ class Integration(DataClassJSONMixin):
         )
 
     def import_bitbucket(
-        self, project_key: str, name: str, repo_slug: str, files: List[str] = []
+            self, project_key: str, name: str, repo_slug: str, files: List[str] = []
     ):
         return self._import(
             {
@@ -519,11 +519,12 @@ class Member(DataClassJSONMixin):
 
 @dataclass
 class IssueCounts(DataClassJSONMixin):
-    low: int
-    medium: int
-    high: int
+    low: Optional[int] = 0
+    medium: Optional[int] = 0
+    high: Optional[int] = 0
     # https://updates.snyk.io/critical-severity-level-195891, critical severity is optional since it is still under Snyk preview
     critical: Optional[int] = 0
+    updated_at: Optional[str] = None
 
 
 @dataclass
@@ -597,26 +598,148 @@ class User(DataClassJSONMixin):
 
 
 @dataclass
-class Project(DataClassJSONMixin):
+class AutoDependencyUpgrade(DataClassJSONMixin):
+    ignored_dependencies: Optional[List[str]] = None
+    is_enabled: Optional[bool] = None
+    is_major_upgrade_enabled: Optional[bool] = None
+    limit: Optional[int] = None
+    minimum_age: Optional[int] = None
+
+
+@dataclass
+class ManualRemediationPRS(DataClassJSONMixin):
+    is_patch_remediation_enabled: Optional[bool] = None
+
+
+@dataclass
+class PullRequestAssignment(DataClassJSONMixin):
+    assignees: Optional[List[str]] = None
+    is_enabled: Optional[bool] = None
+    type: Optional[str] = None
+
+
+@dataclass
+class AutoRemediationPRS(DataClassJSONMixin):
+    is_backlog_prs_enabled: Optional[bool] = None
+    is_fresh_prs_enabled: Optional[bool] = None
+    is_patch_remediation_enabled: Optional[bool] = None
+
+
+@dataclass
+class ProjectRecurringTests(DataClassJSONMixin):
+    frequency: Optional[str] = None
+
+
+@dataclass
+class ProjectPullRequests(DataClassJSONMixin):
+    fail_only_for_issues_with_fix: Optional[bool] = None
+    policy: Optional[str] = None
+    severity_threshold: Optional[str] = None
+
+
+@dataclass
+class ProjectSettings(DataClassJSONMixin):
+    pull_requests: ProjectPullRequests
+    recurring_tests: ProjectRecurringTests
+    pull_request_assignment: Optional[PullRequestAssignment] = None
+    manual_remediation_prs: Optional[ManualRemediationPRS] = None
+    auto_remediation_prs: Optional[AutoRemediationPRS] = None
+    auto_dependency_upgrade: Optional[AutoDependencyUpgrade] = None
+
+
+@dataclass
+class LatestDependencyTotal(DataClassJSONMixin):
+    total: Optional[int] = None
+    updated_at: Optional[str] = None
+
+
+@dataclass
+class ProjectMeta(DataClassJSONMixin):
+    cli_monitored_at: Optional[str] = None
+    latest_dependency_total: Optional[LatestDependencyTotal] = None
+    latest_issue_counts: Optional[IssueCounts] = None
+
+
+@dataclass
+class ProjectAttributes(DataClassJSONMixin):
     name: str
-    organization: Organization
-    id: str
     created: str
     origin: str
     type: str
-    readOnly: bool
-    testFrequency: str
-    lastTestedDate: str
-    isMonitored: bool
-    issueCountsBySeverity: IssueCounts
-    importingUserId: Optional[str] = None
-    owningUserId: Optional[str] = None
-    hostname: Optional[str] = None
-    remoteRepoUrl: Optional[str] = None
-    branch: Optional[str] = None
-    imageCluster: Optional[str] = None
-    attributes: Optional[Dict[str, List[str]]] = None
-    _tags: Optional[List[Any]] = field(default_factory=list)
+    read_only: bool
+    settings: ProjectSettings
+    status: str
+    target_file: str
+    target_reference: str
+    type: str
+    target_runtime: Optional[str] = None
+    build_args: Optional[Dict[str, str]] = None
+    business_criticality: Optional[List[str]] = None
+    environment: Optional[List[str]] = None
+    lifecycle: Optional[List[str]] = None
+    tags: Optional[List[Any]] = field(default_factory=list)
+    meta: Optional[ProjectMeta] = None
+
+
+@dataclass
+class ProjectOrganizationData(DataClassJSONMixin):
+    id: str
+    type: str
+
+
+@dataclass
+class LinksHref(DataClassJSONMixin):
+    href: str
+    meta: Optional[Dict[Any, Any]] = None
+
+
+@dataclass
+class GenericLinks(DataClassJSONMixin):
+    related: Optional[Union[str, LinksHref]] = None
+
+
+@dataclass
+class DataLinksMeta(DataClassJSONMixin):
+    data: ProjectOrganizationData
+    links: GenericLinks
+    meta: Optional[Dict[Any, Any]] = None
+
+
+@dataclass
+class ProjectRelationshipsTargetDataAttributes(DataClassJSONMixin):
+    display_name: str
+    url: Optional[str] = None
+
+
+@dataclass
+class ProjectRelationshipsTargetData(DataClassJSONMixin):
+    id: str
+    type: str
+    attributes: ProjectRelationshipsTargetDataAttributes
+    meta: Optional[Dict[str, Dict[Any, Any]]] = None
+
+
+@dataclass
+class ProjectRelationshipsTarget(DataClassJSONMixin):
+    data: ProjectRelationshipsTargetData
+    links: GenericLinks
+
+
+@dataclass
+class ProjectRelationships(DataClassJSONMixin):
+    organization: DataLinksMeta
+    target: Union[DataLinksMeta, ProjectRelationshipsTarget]
+    owner: Optional[DataLinksMeta] = None
+    importer: Optional[DataLinksMeta] = None
+
+
+@dataclass
+class Project(DataClassJSONMixin):
+    attributes: ProjectAttributes
+    id: str
+    type: str
+    meta: Optional[ProjectMeta] = None
+    relationships: Optional[ProjectRelationships] = None
 
     def delete(self) -> bool:
         path = "org/%s/project/%s" % (self.organization.id, self.id)
@@ -746,11 +869,6 @@ class Project(DataClassJSONMixin):
     def dependency_graph(self) -> DependencyGraph:
         return Manager.factory(DependencyGraph, self.organization.client, self).all()
 
-    # mypy doesn't support decorated properties
-    @property  # type: ignore
-    @deprecated("Use issueset_aggregated")
-    def issueset(self) -> Manager:
-        return Manager.factory(IssueSet, self.organization.client, self)
 
     @property
     def issueset_aggregated(self) -> Manager:
@@ -778,7 +896,7 @@ class Project(DataClassJSONMixin):
         raise SnykNotImplementedError  # pragma: no cover
 
     def _aggregated_issue_to_vulnerabily(
-        self, issue: AggregatedIssue
+            self, issue: AggregatedIssue
     ) -> List[Vulnerability]:
         issue_paths = Manager.factory(
             IssuePaths,
@@ -830,3 +948,18 @@ class Project(DataClassJSONMixin):
             # versions, emulate that here to preserve upstream api
             for version in issue.pkgVersions
         ]
+
+
+@dataclass
+class Pagination(DataClassJSONMixin):
+    first: Optional[Union[str, LinksHref]] = None
+    last: Optional[Union[str, LinksHref]] = None
+    next: Optional[Union[str, LinksHref]] = None
+    prev: Optional[Union[str, LinksHref]] = None
+    related: Optional[Union[str, LinksHref]] = None
+    self: Optional[Union[str, LinksHref]] = None
+
+
+@dataclass
+class JsonApi(DataClassJSONMixin):
+    version: str

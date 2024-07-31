@@ -1,8 +1,10 @@
 import argparse
+from typing import List
 
 import xlsxwriter
 
 from snyk import SnykClient
+from snyk.models import IssueSetAggregated
 from utils import get_default_token_path, get_token
 
 
@@ -56,29 +58,30 @@ def output_excel(vulns, output_path):
     excel_workbook.close()
 
 
-client = SnykClient(snyk_token)
-issue_set = client.organizations.get(org_id).projects.get(project_id).issueset.all()
+client = SnykClient(snyk_token, debug=True)
+issue_set: List[IssueSetAggregated] = client.organizations.get(org_id).projects.get(project_id).issueset_aggregated.all()
 
 lst_output = []
-for v in issue_set.issues.vulnerabilities:
-    print("\n %s" % v.title)
-    print("  id: %s" % v.id)
-    print("  url: %s" % v.url)
+if len(issue_set.issues) > 0:
+    for v in issue_set.issues:
+        print("\n %s" % v.issueData.title)
+        print("  id: %s" % v.issueData.id)
+        print("  url: %s" % v.issueData.url)
 
-    print("  %s@%s" % (v.package, v.version))
-    print("  Severity: %s" % v.severity)
-    print("  CVSS Score: %s" % v.cvssScore)
+        print("  %s@%s" % (v.pkgName, v.pkgVersions))
+        print("  Severity: %s" % v.issueData.severity)
+        print("  CVSS Score: %s" % v.issueData.cvssScore)
 
-    # for the excel output
-    new_output_item = {
-        "title": v.title,
-        "id": v.id,
-        "url": v.url,
-        "package": "%s@%s" % (v.package, v.version),
-        "severity": v.severity,
-        "cvssScore": v.cvssScore,
-    }
-    lst_output.append(new_output_item)
+        # for the excel output
+        new_output_item = {
+            "title": v.issueData.title,
+            "id": v.issueData.id,
+            "url": v.issueData.url,
+            "package": "%s@%s" % (v.pkgName, v.pkgVersions),
+            "severity": v.issueData.severity,
+            "cvssScore": v.issueData.cvssScore,
+        }
+        lst_output.append(new_output_item)
 
-if args.outputPathExcel:
-    output_excel(lst_output, args.outputPathExcel)
+    if args.outputPathExcel:
+        output_excel(lst_output, args.outputPathExcel)

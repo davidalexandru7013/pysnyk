@@ -17,10 +17,12 @@ snyk_token = get_token(snyk_token_path)
 args = parse_command_line_args()
 org_id = args.orgId
 
-client = SnykClient(token=snyk_token)
+#client = SnykClient(token=snyk_token, url="")
+client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
 for proj in client.organizations.get(org_id).projects.all():
-    print("\nProject name: %s" % proj.name)
+    print("\nProject name: %s" % proj.attributes.name)
+    print("Project id: %s\n" % proj.id)
     print("  Issues Found:")
-    print("      High  : %s" % proj.issueCountsBySeverity.high)
-    print("      Medium: %s" % proj.issueCountsBySeverity.medium)
-    print("      Low   : %s" % proj.issueCountsBySeverity.low)
+    print("      High  : %s" % proj.meta.latest_issue_counts.high)
+    print("      Medium: %s" % proj.meta.latest_issue_counts.medium)
+    print("      Low   : %s" % proj.meta.latest_issue_counts.low)

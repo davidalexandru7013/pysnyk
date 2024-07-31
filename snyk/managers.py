@@ -57,7 +57,7 @@ class Manager(abc.ABC):
                 "Ignore": IgnoreManager,
                 "JiraIssue": JiraIssueManager,
                 "DependencyGraph": DependencyGraphManager,
-                "IssueSet": IssueSetManager,
+                "IssueSet": IssueSetAggregatedManager,
                 "IssueSetAggregated": IssueSetAggregatedManager,
                 "Integration": IntegrationManager,
                 "IntegrationSetting": IntegrationSettingManager,
@@ -195,6 +195,7 @@ class ProjectManager(Manager):
     def _query(self, tags: List[Dict[str, str]] = [], next_url: str = None):
         projects = []
         params: dict = {"limit": 100}
+        
         if self.instance:
             path = "/orgs/%s/projects" % self.instance.id if not next_url else next_url
 
@@ -207,41 +208,43 @@ class ProjectManager(Manager):
                 params["tags"] = ",".join(data)
 
             # Append the issue count param to the params if this is the first page
-            if not next_url:
-                params["meta.latest_issue_counts"] = "true"
-                params["expand"] = "target"
+            # if not next_url:
+            params["meta.latest_issue_counts"] = "true"
+            params["meta.latest_dependency_total"] = "true"
+            params["expand"] = "target"
 
             # And lastly, make the API call
             resp = self.client.get(
                 path,
-                version="2023-06-19",
-                params=params,
-                exclude_version=True if next_url else False,
+                version="2024-06-21",
+                params=params
             )
+            response_json = resp.json()
 
-            if "data" in resp.json():
+            if "data" in response_json:
                 # Process projects in current response
-                for response_data in resp.json()["data"]:
-                    project_data = self._rest_to_v1_response_format(response_data)
-                    project_data["organization"] = self.instance.to_dict()
-                    try:
-                        project_data["attributes"]["_tags"] = project_data[
-                            "attributes"
-                        ]["tags"]
-                        del project_data["attributes"]["tags"]
-                    except KeyError:
-                        pass
-                    if not project_data.get("totalDependencies"):
-                        project_data["totalDependencies"] = 0
-                    projects.append(self.klass.from_dict(project_data))
+                response_projects = response_json["data"]
+                for response_data in response_projects:
+                    # project_data = self._rest_to_v1_response_format(response_data)
+                    # project_data["organization"] = self.instance.to_dict()
+                    # try:
+                    #     project_data["attributes"]["_tags"] = project_data[
+                    #         "attributes"
+                    #     ]["tags"]
+                    #     del project_data["attributes"]["tags"]
+                    # except KeyError:
+                    #     pass
+                    # if not project_data.get("totalDependencies"):
+                    #     project_data["totalDependencies"] = 0
+                    projects.append(self.klass.from_dict(response_data))
 
                 # If we have another page, then process this page too
-                if "next" in resp.json().get("links", {}):
-                    next_url = resp.json().get("links", {})["next"]
+                if "next" in response_json.get("links", {}):
+                    next_url = response_json.get("links", {})["next"]
                     projects.extend(self._query(tags, next_url))
 
-            for x in projects:
-                x.organization = self.instance
+            # for x in projects:
+            #     x.organization = self.instance
         else:
             for org in self.client.organizations.all():
                 projects.extend(org.projects.all())
@@ -258,19 +261,20 @@ class ProjectManager(Manager):
 
     def get(self, id: str):
         if self.instance:
-            path = "org/%s/project/%s" % (self.instance.id, id)
+            path = "orgs/%s/projects/%s" % (self.instance.id, id)
             resp = self.client.get(path)
-            project_data = resp.json()
-            project_data["organization"] = self.instance.to_dict()
+            response_json = resp.json()
+            project_data = response_json.get("data", {})
+            # project_data["organization"] = self.instance.to_dict()
             # We move tags to _tags as a cache, to avoid the need for additional requests
             # when working with tags. We want tags to be the manager
-            try:
-                project_data["_tags"] = project_data["tags"]
-                del project_data["tags"]
-            except KeyError:
-                pass
-            if project_data.get("totalDependencies") is None:
-                project_data["totalDependencies"] = 0
+            # try:
+            #     project_data["_tags"] = project_data["tags"]
+            #     del project_data["tags"]
+            # except KeyError:
+            #     pass
+            # if project_data.get("totalDependencies") is None:
+            #     project_data["totalDependencies"] = 0
             project_klass = self.klass.from_dict(project_data)
             project_klass.organization = self.instance
             return project_klass

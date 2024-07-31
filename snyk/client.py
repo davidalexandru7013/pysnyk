@@ -6,8 +6,6 @@ from urllib.parse import parse_qs, urlparse
 import requests
 from retry.api import retry_call
 
-from snyk.query_params import AbstractQueryParams
-
 from .__version__ import __version__
 from .errors import SnykHTTPError, SnykNotImplementedError
 from .managers import Manager
@@ -48,7 +46,7 @@ class SnykClient(object):
         self.backoff = backoff
         self.delay = delay
         self.verify = verify
-        self.version = version
+        self.version = version if version else "2024-06-21"
 
         # Ensure we don't have a trailing /
         if self.api_url[-1] == "/":
@@ -84,8 +82,8 @@ class SnykClient(object):
             raise SnykHTTPError(resp)
         return resp
 
-    def post(self, path: str, body: Any, headers: dict = {}) -> requests.Response:
-        url = f"{self.api_url}/{path}"
+    def post(self, path: str, body: Any, headers: dict = {}, version: str = None) -> requests.Response:
+        url = f"{self.api_url}/{path}?version={version if version else self.version}"
         logger.debug(f"POST: {url}")
 
         resp = retry_call(
@@ -129,7 +127,6 @@ class SnykClient(object):
         path: str,
         params: dict[str, Any] = None,
         version: str = None,
-        exclude_version: bool = False,
         exclude_params: bool = False,
     ) -> requests.Response:
         """
@@ -144,15 +141,15 @@ class SnykClient(object):
         """
 
         path = cleanup_path(path)
-        if version:
-            # When calling a "next page" link, it fails if a version parameter is appended on to the URL - this is a
-            # workaround to prevent that from happening...
-            if exclude_version:
-                url = f"{self.rest_api_url}/{path}"
-            else:
-                url = f"{self.rest_api_url}/{path}?version={version}"
-        else:
-            url = f"{self.rest_api_url}/{path}"
+        # if version:
+        #     # When calling a "next page" link, it fails if a version parameter is appended on to the URL - this is a
+        #     # workaround to prevent that from happening...
+        #     if exclude_version:
+        #         url = f"{self.rest_api_url}/{path}"
+        #     else:
+        #         url = f"{self.rest_api_url}/{path}?version={version}"
+        # else:
+        url = f"{self.rest_api_url}/{path}?version={version if version else self.version}"
 
         #if (params or self.version) and not exclude_params:
 
@@ -179,6 +176,7 @@ class SnykClient(object):
         else:
             debug_url = url
             fkwargs = {"headers": self.api_headers}
+
 
         logger.debug(f"GET: {debug_url}")
 
