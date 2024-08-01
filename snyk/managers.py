@@ -15,10 +15,10 @@ class Manager(abc.ABC):
         self.instance = instance
 
     @abc.abstractmethod
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         pass  # pragma: no cover
 
-    def get(self, id: str):
+    def get(self, id: str, params: Dict[str, Any] = {}):
         try:
             return next(x for x in self.all() if x.id == id)
         except StopIteration:
@@ -71,10 +71,10 @@ class Manager(abc.ABC):
 
 class DictManager(Manager):
     @abc.abstractmethod
-    def all(self) -> Dict[str, Any]:
+    def all(self, params: Dict[str, Any] = {}) -> Dict[str, Any]:
         pass  # pragma: no cover
 
-    def get(self, id: str):
+    def get(self, id: str, params: Dict[str, Any] = {}):
         try:
             return self.all()[id]
         except KeyError:
@@ -92,13 +92,13 @@ class DictManager(Manager):
 
 class SingletonManager(Manager):
     @abc.abstractmethod
-    def all(self) -> Any:
+    def all(self, params: Dict[str, Any] = {}) -> Any:
         pass  # pragma: no cover
 
     def first(self):
         raise SnykNotImplementedError  # pragma: no cover
 
-    def get(self, id: str):
+    def get(self, id: str, params: Dict[str, Any] = {}):
         raise SnykNotImplementedError  # pragma: no cover
 
     def filter(self, **kwargs: Any):
@@ -106,7 +106,7 @@ class SingletonManager(Manager):
 
 
 class OrganizationManager(Manager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         resp = self.client.get("orgs")
         orgs = []
         orgs_data = "data"
@@ -120,7 +120,7 @@ class OrganizationManager(Manager):
 
 
 class TagManager(Manager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         return self.instance._tags
 
     def add(self, key, value) -> bool:
@@ -195,7 +195,7 @@ class ProjectManager(Manager):
     def _query(self, tags: List[Dict[str, str]] = [], next_url: str = None):
         projects = []
         params: dict = {"limit": 100}
-        
+
         if self.instance:
             path = "/orgs/%s/projects" % self.instance.id if not next_url else next_url
 
@@ -250,7 +250,7 @@ class ProjectManager(Manager):
                 projects.extend(org.projects.all())
         return projects
 
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         return self._query()
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
@@ -259,10 +259,11 @@ class ProjectManager(Manager):
         else:
             return super().filter(**kwargs)
 
-    def get(self, id: str):
+    def get(self, id: str, params: Dict[str, Any] = {}):
         if self.instance:
             path = "orgs/%s/projects/%s" % (self.instance.id, id)
-            resp = self.client.get(path)
+            query_params = self.__get_query_params()
+            resp = self.client.get(path, params={**query_params, **params})
             response_json = resp.json()
             project_data = response_json.get("data", {})
             # project_data["organization"] = self.instance.to_dict()
@@ -281,9 +282,16 @@ class ProjectManager(Manager):
         else:
             return super().get(id)
 
+    def __get_query_params(self):
+        return {
+            "meta.latest_issue_counts": "true",
+            "meta.latest_dependency_total": "true",
+            "expand": "target"
+        }
+
 
 class MemberManager(Manager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         path = "org/%s/members" % self.instance.id
         resp = self.client.get(path)
         members = []
@@ -293,7 +301,7 @@ class MemberManager(Manager):
 
 
 class LicenseManager(Manager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         if hasattr(self.instance, "organization"):
             path = "org/%s/licenses" % self.instance.organization.id
             post_body = {"filters": {"projects": [self.instance.id]}}
@@ -311,7 +319,7 @@ class LicenseManager(Manager):
 
 
 class DependencyManager(Manager):
-    def all(self, page: int = 1):
+    def all(self, page: int = 1, params: Dict[str, Any] = {}):
         results_per_page = 1000
         if hasattr(self.instance, "organization"):
             org_id = self.instance.organization.id
@@ -343,14 +351,14 @@ class DependencyManager(Manager):
 
 
 class EntitlementManager(DictManager):
-    def all(self) -> Dict[str, bool]:
+    def all(self, params: Dict[str, Any] = {}) -> Dict[str, bool]:
         path = "org/%s/entitlements" % self.instance.id
         resp = self.client.get(path)
         return resp.json()
 
 
 class SettingManager(DictManager):
-    def all(self) -> Dict[str, Any]:
+    def all(self, params: Dict[str, Any] = {}) -> Dict[str, Any]:
         path = "org/%s/project/%s/settings" % (
             self.instance.organization.id,
             self.instance.id,
@@ -387,7 +395,7 @@ class SettingManager(DictManager):
 
 
 class IgnoreManager(DictManager):
-    def all(self) -> Dict[str, List[object]]:
+    def all(self, params: Dict[str, Any] = {}) -> Dict[str, List[object]]:
         path = "org/%s/project/%s/ignores" % (
             self.instance.organization.id,
             self.instance.id,
@@ -397,7 +405,7 @@ class IgnoreManager(DictManager):
 
 
 class JiraIssueManager(DictManager):
-    def all(self) -> Dict[str, List[object]]:
+    def all(self, params: Dict[str, Any] = {}) -> Dict[str, List[object]]:
         path = "org/%s/project/%s/jira-issues" % (
             self.instance.organization.id,
             self.instance.id,
@@ -417,16 +425,16 @@ class JiraIssueManager(DictManager):
         # The response we get is not following the schema as specified by the api
         # https://snyk.docs.apiary.io/#reference/projects/project-jira-issues-/create-jira-issue
         if (
-            issue_id in response_data
-            and len(response_data[issue_id]) > 0
-            and "jiraIssue" in response_data[issue_id][0]
+                issue_id in response_data
+                and len(response_data[issue_id]) > 0
+                and "jiraIssue" in response_data[issue_id][0]
         ):
             return response_data[issue_id][0]["jiraIssue"]
         raise SnykError
 
 
 class IntegrationManager(Manager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         path = "org/%s/integrations" % self.instance.id
         resp = self.client.get(path)
         integrations = []
@@ -439,7 +447,7 @@ class IntegrationManager(Manager):
 
 
 class IntegrationSettingManager(DictManager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         path = "org/%s/integrations/%s/settings" % (
             self.instance.organization.id,
             self.instance.id,
@@ -449,7 +457,7 @@ class IntegrationSettingManager(DictManager):
 
 
 class DependencyGraphManager(SingletonManager):
-    def all(self) -> Any:
+    def all(self, params: Dict[str, Any] = {}) -> Any:
         path = "org/%s/project/%s/dep-graph" % (
             self.instance.organization.id,
             self.instance.id,
@@ -496,7 +504,7 @@ class IssueSetManager(SingletonManager):
 
 
 class IssueSetAggregatedManager(SingletonManager):
-    def all(self) -> Any:
+    def all(self, params: Dict[str, Any] = {}) -> Any:
         return self.filter()
 
     def filter(self, **kwargs: Any):
@@ -532,7 +540,7 @@ class IssueSetAggregatedManager(SingletonManager):
 
 
 class IssuePathsManager(SingletonManager):
-    def all(self):
+    def all(self, params: Dict[str, Any] = {}):
         path = "org/%s/project/%s/issue/%s/paths" % (
             self.instance.organization_id,
             self.instance.project_id,
