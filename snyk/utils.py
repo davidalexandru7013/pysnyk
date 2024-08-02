@@ -1,6 +1,8 @@
 import json
 import logging
+import urllib.parse
 from itertools import chain
+from typing import Dict, Any
 
 
 def snake_to_camel(word):
@@ -53,3 +55,13 @@ def load_test_data(test_dir: str, test_name: str) -> dict:
     with open(test_file, "r") as the_file:
         data = the_file.read()
     return json.loads(data)
+
+
+def extract_query_params(url: str) -> Dict[str, Any]:
+    """
+    Returns the query parameters from an url string as a dictionary.
+    """
+    parsed_url = urllib.parse.urlparse(url)
+    query_params = urllib.parse.parse_qs(parsed_url.query)
+
+    return query_params
