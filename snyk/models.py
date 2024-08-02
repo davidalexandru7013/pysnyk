@@ -270,7 +270,7 @@ class Organization(DataClassJSONMixin):
     # https://snyk.docs.apiary.io/#reference/users/user-organisation-notification-settings/modify-org-notification-settings
     # https://snyk.docs.apiary.io/#reference/users/user-organisation-notification-settings/get-org-notification-settings
     def notification_settings(self):
-        raise SnykNotImplemented  # pragma: no cover
+        raise SnykNotImplementedError  # pragma: no cover
 
     # https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/invite-users
     def invite(self, email: str, admin: bool = False) -> bool:

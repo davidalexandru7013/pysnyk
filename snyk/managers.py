@@ -110,7 +110,6 @@ class OrganizationManager(Manager):
     def all(self, params: Dict[str, Any] = {}):
         orgs = []
         orgs_url: str = "orgs"
-
         def get_all(url: str, query_params: Dict[str, Any] = {}):
             resp = self.client.get(url, params=query_params)
             orgs_data: str = "data"
@@ -122,11 +121,16 @@ class OrganizationManager(Manager):
                     orgs.append(self.klass.from_dict(org_data))
 
             if links in response_json:
+                # pagination: Pagination = Pagination.from_dict(response_json[links])
+                # if pagination.next in response_json[links]:
+                #     next_page = pagination.next if pagination.next is str else pagination.next.href
+                #     current_params = extract_query_params(next_page)
                 next: str = "next"
+
                 if next in response_json[links]:
                     next_url = response_json[links][next]
                     current_params = extract_query_params(next_url)
-                    next_params = {**params, **current_params}
+                    next_params = {**query_params, **current_params}
                     time.sleep(0.1)
                     get_all(url, next_params)
 
@@ -268,6 +272,16 @@ class ProjectManager(Manager):
         return projects
 
     def all(self, params: Dict[str, Any] = {}):
+        # self.__adapt_query_params_to_schema(params)
+        # projects = []
+        #
+        # def get_all(url: str, query_params: Dict[str, Any] = {}):
+        #     resp = self.client.get(url, params=query_params)
+        #     projects_data: str = "data"
+        #     links: str = "links"
+        #
+        #     response_json = resp.json()
+
         return self._query()
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
@@ -305,6 +319,12 @@ class ProjectManager(Manager):
             "meta.latest_dependency_total": "true",
             "expand": "target"
         }
+
+    def __adapt_query_params_to_schema(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if "tags" in params:
+            params["tags"] = ",".join([f"{key}:{value}" for key, value in params["tags"].items()])
+
+        return params
 
 
 class MemberManager(Manager):
