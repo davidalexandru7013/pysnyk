@@ -121,14 +121,9 @@ class OrganizationManager(Manager):
                     orgs.append(self.klass.from_dict(org_data))
 
             if links in response_json:
-                # pagination: Pagination = Pagination.from_dict(response_json[links])
-                # if pagination.next in response_json[links]:
-                #     next_page = pagination.next if pagination.next is str else pagination.next.href
-                #     current_params = extract_query_params(next_page)
-                next: str = "next"
-
-                if next in response_json[links]:
-                    next_url = response_json[links][next]
+                next_body: str = "next"
+                if next_body in response_json[links]:
+                    next_url = response_json[links][next_body]
                     current_params = extract_query_params(next_url)
                     next_params = {**query_params, **current_params}
                     time.sleep(0.1)
@@ -138,6 +133,8 @@ class OrganizationManager(Manager):
         for org in orgs:
             org.client = self.client
         return orgs
+
+    #def get(self, id: str, params: Dict[str, Any] = {}):
 
 
 class TagManager(Manager):
@@ -264,8 +261,8 @@ class ProjectManager(Manager):
                     next_url = response_json.get("links", {})["next"]
                     projects.extend(self._query(tags, next_url))
 
-            # for x in projects:
-            #     x.organization = self.instance
+            for x in projects:
+                x.organization = self.instance
         else:
             for org in self.client.organizations.all():
                 projects.extend(org.projects.all())
@@ -281,6 +278,7 @@ class ProjectManager(Manager):
         #     links: str = "links"
         #
         #     response_json = resp.json()
+
 
         return self._query()
 

@@ -738,6 +738,7 @@ class Project(DataClassJSONMixin):
     attributes: ProjectAttributes
     id: str
     type: str
+    organization: Organization = None
     meta: Optional[ProjectMeta] = None
     relationships: Optional[ProjectRelationships] = None
 

@@ -162,9 +162,9 @@ class SnykClient(object):
             # Python Bools are True/False, JS Bools are true/false
             # Snyk REST API is strictly case sensitive at the moment
 
-            # for k, v in params.items():
-            #     if isinstance(v, bool):
-            #         params[k] = str(v).lower()
+            for k, v in params.items():
+                if isinstance(v, bool):
+                    params[k] = str(v).lower()
 
             # the limit is returned in the url, and if two limits are passed
             # the API interprets as an array and throws an error

@@ -19,7 +19,7 @@ org_id = args.orgId
 
 #client = SnykClient(token=snyk_token, url="")
 client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
-for proj in client.organizations.get(org_id).projects.all(params={"tags": {'key': 'test'}}):
+for proj in client.organizations.get(org_id).projects.all():
     print("\nProject name: %s" % proj.attributes.name)
     print("Project id: %s\n" % proj.id)
     print("  Issues Found:")
