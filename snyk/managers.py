@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from deprecation import deprecated  # type: ignore
 
 from .errors import SnykError, SnykNotFoundError, SnykNotImplementedError
-from .utils import snake_to_camel, extract_query_params
+from .utils import snake_to_camel, extract_query_params, extract_query_params_without_version
 
 
 class Manager(abc.ABC):
@@ -129,7 +129,7 @@ class OrganizationManager(Manager):
             next_body: str = "next"
             if next_body in response_json[links]:
                 next_url = response_json[links][next_body]
-                current_params = extract_query_params(next_url)
+                current_params = extract_query_params_without_version(next_url)
                 next_params = {**query_params, **current_params}
                 # time.sleep(0.1)
                 orgs.extend(self.__get_all(url, next_params))
@@ -159,6 +159,7 @@ class TagManager(Manager):
 
 
 class ProjectManager(Manager):
+    # TODO delete this
     def _rest_to_v1_response_format(self, project):
         attributes = project.get("attributes", {})
         settings = attributes.get("settings", {})
@@ -210,6 +211,7 @@ class ProjectManager(Manager):
             .get("id"),
         }
 
+    # TODO delete this
     def _query(self, tags: List[Dict[str, str]] = [], next_url: str = None):
         projects = []
         params: dict = {"limit": 100}
@@ -269,11 +271,12 @@ class ProjectManager(Manager):
         return projects
 
     def all(self, params: Dict[str, Any] = {}):
-        self.__adapt_query_params_to_schema(params)
+        tags: str = "" if "tags" not in params else self.__get_tags(params["tags"])
+
         if "limit" not in params:
             params["limit"] = 100
 
-        projects = self.__get_all(params)
+        projects = self.__get_all(params, tags)
         return projects
         # return self._query()
 
@@ -286,8 +289,9 @@ class ProjectManager(Manager):
     def get(self, id: str, params: Dict[str, Any] = {}):
         if self.instance:
             path = "orgs/%s/projects/%s" % (self.instance.id, id)
-            query_params = self.__get_query_params()
-            resp = self.client.get(path, params={**query_params, **params})
+            query_params: Dict[str, str] = self.__get_query_params()
+            next_params: Dict[str, Any] = {**query_params, **params}
+            resp = self.client.get(path, params=next_params)
             response_json = resp.json()
             project_data = response_json.get("data", {})
             # project_data["organization"] = self.instance.to_dict()
@@ -313,22 +317,26 @@ class ProjectManager(Manager):
             "expand": "target"
         }
 
-    def __adapt_query_params_to_schema(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        if "tags" in params:
-            params["tags"] = ";".join([f"{key}:{value}" for key, value in params["tags"].items()])
+    def __get_tags(self, tags: List[Dict[str, str]]) -> str:
+        for tag in tags:
+            if "key" not in tag or "value" not in tag or len(tag.keys()) != 2:
+                raise SnykError("Each tag must contain only a key and a value")
+        tags_concatenated: str = ",".join([f'{data["key"]}:{data["value"]}' for data in tags])
+        return tags_concatenated
 
-        return params
-
-    def __get_all(self, params: Dict[str, Any] = {}):
+    def __get_all(self, params: Dict[str, Any] = {}, tags_concatenated: str = ""):
         projects = []
+        get_all_data_params = self.__get_query_params()
+        next_params = {**params, **get_all_data_params}
+        if len(tags_concatenated) > 0:
+            next_params["tags"] = tags_concatenated
         if self.instance:
             path = "/orgs/%s/projects" % self.instance.id
-            get_all_data_params = self.__get_query_params()
-            params = {**params, **get_all_data_params}
+
             resp = self.client.get(
                 path,
-                version = "2024-06-21",
-                params = params
+                version="2024-06-21",
+                params=next_params
             )
             response_json = resp.json()
             response_projects = response_json.get("data")
@@ -340,16 +348,15 @@ class ProjectManager(Manager):
             response_links = response_json.get("links", {})
             if "next" in response_links:
                 next_url = response_links["next"]
-                next_link_params = extract_query_params(next_url)
+                next_link_params = extract_query_params_without_version(next_url)
                 next_params = {**params, **next_link_params}
                 projects.extend(self.__get_all(next_params))
 
         else:
             for organization in self.client.organizations.all():
-                projects.extend(organization.projects.all())
+                projects.extend(organization.projects.all(params))
 
         return projects
-
 
 
 class MemberManager(Manager):

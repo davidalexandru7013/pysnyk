@@ -7,7 +7,7 @@ import requests
 from retry.api import retry_call
 
 from .__version__ import __version__
-from .errors import SnykHTTPError, SnykNotImplementedError
+from .errors import SnykHTTPError, SnykNotImplementedError, SnykError
 from .managers import Manager
 from .models import Organization, Project
 from .utils import cleanup_path
@@ -141,6 +141,8 @@ class SnykClient(object):
         """
 
         path = cleanup_path(path)
+        if "version" in params:
+            raise SnykError("Version should not be passed in params")
         # if version:
         #     # When calling a "next page" link, it fails if a version parameter is appended on to the URL - this is a
         #     # workaround to prevent that from happening...
@@ -165,6 +167,8 @@ class SnykClient(object):
             for k, v in params.items():
                 if isinstance(v, bool):
                     params[k] = str(v).lower()
+                elif isinstance(v, list):
+                    params[k] = ",".join(v)
 
             # the limit is returned in the url, and if two limits are passed
             # the API interprets as an array and throws an error

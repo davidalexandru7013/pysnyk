@@ -27,11 +27,13 @@ args = parse_command_line_args()
 org_id = args.orgId
 project_id = args.projectId
 
-#client = SnykClient(token=snyk_token, url="")
+# client = SnykClient(token=snyk_token, url="")
 client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
 proj = client.organizations.get(org_id).projects.get(project_id)
-#TODO delete the below line
-proj = client.projects.all()[0]
+# TODO delete the below line
+proj = client.projects.all(params={"tags": [{"key": "2", "value": "tag3"}]})[0]
+#TODO lists are not serialized correctly as query params
+proj = client.projects.all(params={"business_criticality": ["critical", "high"]})[0]
 tags = proj.attributes.tags
 print("Org id: %s" % proj.organization.id)
 print("\nProject name: %s" % proj.attributes.name)

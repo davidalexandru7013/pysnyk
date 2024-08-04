@@ -17,7 +17,8 @@ snyk_token = get_token(snyk_token_path)
 args = parse_command_line_args()
 org_id = args.orgId
 
-#client = SnykClient(token=snyk_token, url="")
+# client = SnykClient(token=snyk_token)
+# TODO remove this and make sure url is passed and used correctly
 client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
 for proj in client.organizations.get(org_id).projects.all():
     print("\nProject name: %s" % proj.attributes.name)

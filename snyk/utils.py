@@ -65,3 +65,13 @@ def extract_query_params(url: str) -> Dict[str, Any]:
     query_params = urllib.parse.parse_qs(parsed_url.query)
 
     return query_params
+
+
+def extract_query_params_without_version(url: str) -> Dict[str, Any]:
+    """
+    Returns the query parameters from an url string as a dictionary, without the version.
+    """
+    params = extract_query_params(url)
+    if "version" in params:
+        del params["version"]
+    return params
