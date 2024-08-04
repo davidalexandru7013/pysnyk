@@ -270,28 +270,12 @@ class ProjectManager(Manager):
 
     def all(self, params: Dict[str, Any] = {}):
         self.__adapt_query_params_to_schema(params)
-        projects = []
         if "limit" not in params:
             params["limit"] = 100
-        def get_all():
-            if self.instance:
-                path = "/orgs/%s/projects" % self.instance.id
-                get_all_data_params = self.__get_query_params()
 
-
-
-
-        # projects = []
-        #
-        # def get_all(url: str, query_params: Dict[str, Any] = {}):
-        #     resp = self.client.get(url, params=query_params)
-        #     projects_data: str = "data"
-        #     links: str = "links"
-        #
-        #     response_json = resp.json()
-
-        #TODO: rewrite the _query method logic here
-        return self._query()
+        projects = self.__get_all(params)
+        return projects
+        # return self._query()
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
         if tags:
@@ -334,6 +318,38 @@ class ProjectManager(Manager):
             params["tags"] = ";".join([f"{key}:{value}" for key, value in params["tags"].items()])
 
         return params
+
+    def __get_all(self, params: Dict[str, Any] = {}):
+        projects = []
+        if self.instance:
+            path = "/orgs/%s/projects" % self.instance.id
+            get_all_data_params = self.__get_query_params()
+            params = {**params, **get_all_data_params}
+            resp = self.client.get(
+                path,
+                version = "2024-06-21",
+                params = params
+            )
+            response_json = resp.json()
+            response_projects = response_json.get("data")
+            for response_data in response_projects:
+                project = self.klass.from_dict(response_data)
+                project.organization = self.instance
+                projects.append(project)
+
+            response_links = response_json.get("links", {})
+            if "next" in response_links:
+                next_url = response_links["next"]
+                next_link_params = extract_query_params(next_url)
+                next_params = {**params, **next_link_params}
+                projects.extend(self.__get_all(next_params))
+
+        else:
+            for organization in self.client.organizations.all():
+                projects.extend(organization.projects.all())
+
+        return projects
+
 
 
 class MemberManager(Manager):
