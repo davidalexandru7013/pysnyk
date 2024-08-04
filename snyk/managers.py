@@ -108,33 +108,33 @@ class SingletonManager(Manager):
 
 class OrganizationManager(Manager):
     def all(self, params: Dict[str, Any] = {}):
-        orgs = []
         orgs_url: str = "orgs"
-        def get_all(url: str, query_params: Dict[str, Any] = {}):
-            resp = self.client.get(url, params=query_params)
-            orgs_data: str = "data"
-            links: str = "links"
-
-            response_json = resp.json()
-            if orgs_data in response_json:
-                for org_data in response_json[orgs_data]:
-                    orgs.append(self.klass.from_dict(org_data))
-
-            if links in response_json:
-                next_body: str = "next"
-                if next_body in response_json[links]:
-                    next_url = response_json[links][next_body]
-                    current_params = extract_query_params(next_url)
-                    next_params = {**query_params, **current_params}
-                    time.sleep(0.1)
-                    get_all(url, next_params)
-
-        get_all(orgs_url, query_params=params)
+        orgs = self.__get_all(orgs_url, query_params=params)
         for org in orgs:
             org.client = self.client
         return orgs
 
-    #def get(self, id: str, params: Dict[str, Any] = {}):
+    def __get_all(self, url: str, query_params: Dict[str, Any] = {}):
+        resp = self.client.get(url, params=query_params)
+        orgs_data: str = "data"
+        links: str = "links"
+        orgs = []
+
+        response_json = resp.json()
+        if orgs_data in response_json:
+            for org_data in response_json[orgs_data]:
+                orgs.append(self.klass.from_dict(org_data))
+
+        if links in response_json:
+            next_body: str = "next"
+            if next_body in response_json[links]:
+                next_url = response_json[links][next_body]
+                current_params = extract_query_params(next_url)
+                next_params = {**query_params, **current_params}
+                # time.sleep(0.1)
+                orgs.extend(self.__get_all(url, next_params))
+
+        return orgs
 
 
 class TagManager(Manager):
@@ -269,7 +269,18 @@ class ProjectManager(Manager):
         return projects
 
     def all(self, params: Dict[str, Any] = {}):
-        # self.__adapt_query_params_to_schema(params)
+        self.__adapt_query_params_to_schema(params)
+        projects = []
+        if "limit" not in params:
+            params["limit"] = 100
+        def get_all():
+            if self.instance:
+                path = "/orgs/%s/projects" % self.instance.id
+                get_all_data_params = self.__get_query_params()
+
+
+
+
         # projects = []
         #
         # def get_all(url: str, query_params: Dict[str, Any] = {}):
@@ -279,7 +290,7 @@ class ProjectManager(Manager):
         #
         #     response_json = resp.json()
 
-
+        #TODO: rewrite the _query method logic here
         return self._query()
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
@@ -320,7 +331,7 @@ class ProjectManager(Manager):
 
     def __adapt_query_params_to_schema(self, params: Dict[str, Any]) -> Dict[str, Any]:
         if "tags" in params:
-            params["tags"] = ",".join([f"{key}:{value}" for key, value in params["tags"].items()])
+            params["tags"] = ";".join([f"{key}:{value}" for key, value in params["tags"].items()])
 
         return params
 

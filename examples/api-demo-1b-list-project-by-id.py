@@ -29,7 +29,10 @@ project_id = args.projectId
 
 #client = SnykClient(token=snyk_token, url="")
 client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
-proj = client.organizations.get(org_id).projects.get(project_id)
+# proj = client.organizations.get(org_id).projects.get(project_id, params={
+#     "tags": {"a": "b", "c": "d"}
+# })
+proj = client.projects.all(params={"tags": {"a":"c"}})[0]
 tags = proj.attributes.tags
 print("Org id: %s" % proj.organization.id)
 print("\nProject name: %s" % proj.attributes.name)
