@@ -159,7 +159,7 @@ class TagManager(Manager):
 
 
 class ProjectManager(Manager):
-    # TODO delete this
+    # TODO this method
     def _rest_to_v1_response_format(self, project):
         attributes = project.get("attributes", {})
         settings = attributes.get("settings", {})

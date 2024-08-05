@@ -143,7 +143,7 @@ class SnykClient(object):
 
         path = cleanup_path(path)
         if "version" in params:
-            raise SnykError("Version should not be passed in params")
+            raise SnykError("API version should not be passed in params")
         # if version:
         #     # When calling a "next page" link, it fails if a version parameter is appended on to the URL - this is a
         #     # workaround to prevent that from happening...

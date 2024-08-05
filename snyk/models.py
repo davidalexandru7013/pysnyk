@@ -190,6 +190,7 @@ class Organization(DataClassJSONMixin):
     attributes: OrganizationAttributes
     id: str
     type: str
+    client: Optional[Any] = None
     relationships: Optional[OrganizationRelationships] = None
 
     @property

@@ -30,11 +30,16 @@ project_id = args.projectId
 # client = SnykClient(token=snyk_token, url="")
 client = SnykClient("0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
 proj = client.organizations.get(org_id).projects.get(project_id)
-# TODO delete the below line
-proj = client.organizations.get(org_id).projects.all(params={"ids": ["df7667d2-a79f-47ce-875b-99c93bf45426", "95610e38-5156-47ae-b638-9e494978a5b0"]})
-proj = client.projects.all(params={"tags": [{"key": "2", "value": "tag3"}]})[0]
-#TODO lists are not serialized correctly as query params
-proj = client.projects.all(params={"business_criticality": ["critical", "high"]})[0]
+params = {
+          "business_criticality": ["critical", "high"],
+          "lifecycle": ["development", "production"],
+          "tags": [{"key": "2", "value": "tag3"}]
+}
+proj = client.organizations.get(org_id).projects.all(
+    params={"ids": ["df7667d2-a79f-47ce-875b-99c93bf45426", "95610e38-5156-47ae-b638-9e494978a5b0"]})
+proj = client.projects.all(params=params)[0]
+# TODO lists are not serialized correctly as query params
+proj = client.projects.all(params=params)[0]
 tags = proj.attributes.tags
 print("Org id: %s" % proj.organization.id)
 print("\nProject name: %s" % proj.attributes.name)
