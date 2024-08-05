@@ -1,3 +1,4 @@
+import copy
 import logging
 import urllib.parse
 from typing import Any, List, Optional
@@ -154,9 +155,10 @@ class SnykClient(object):
         url = f"{self.rest_api_url}/{path}?version={version if version else self.version}"
 
         #if (params or self.version) and not exclude_params:
+        #so we can avoid altering the parameters
 
         if params and not exclude_params:
-
+            params_copy = copy.deepcopy(params)
             # we use the presence of version to determine if we are REST or not
             # if "version" not in params.keys() and self.version and not exclude_version:
             #     params["version"] = version or self.version
@@ -164,19 +166,19 @@ class SnykClient(object):
             # Python Bools are True/False, JS Bools are true/false
             # Snyk REST API is strictly case sensitive at the moment
 
-            for k, v in params.items():
+            for k, v in params_copy.items():
                 if isinstance(v, bool):
-                    params[k] = str(v).lower()
+                    params_copy[k] = str(v).lower()
                 elif isinstance(v, list):
-                    params[k] = ",".join(v)
+                    params_copy[k] = ",".join(v)
 
             # the limit is returned in the url, and if two limits are passed
             # the API interprets as an array and throws an error
             # if "limit" in parse_qs(urlparse(path).query):
             #     params.pop("limit", None)
 
-            debug_url = f"{url}&{urllib.parse.urlencode(params)}"
-            fkwargs = {"headers": self.api_headers, "params": params}
+            debug_url = f"{url}&{urllib.parse.urlencode(params_copy)}"
+            fkwargs = {"headers": self.api_headers, "params": params_copy}
         else:
             debug_url = url
             fkwargs = {"headers": self.api_headers}
