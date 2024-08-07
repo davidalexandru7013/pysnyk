@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from deprecation import deprecated  # type: ignore
 
 from .errors import SnykError, SnykNotFoundError, SnykNotImplementedError
-from .utils import snake_to_camel
+from .utils import snake_to_camel, get_query_params
 
 
 class Manager(abc.ABC):
@@ -190,11 +190,13 @@ class ProjectManager(Manager):
             .get("id"),
         }
 
-    def _query(self, tags: List[Dict[str, str]] = [], next_url: str = None):
+    def _query(self, tags: List[Dict[str, str]] = [], params: Dict[str, Any] = {}):
         projects = []
-        params: dict = {"limit": 100}
+        if "limit" not in params:
+            params["limit"] = 100
+
         if self.instance:
-            path = "/orgs/%s/projects" % self.instance.id if not next_url else next_url
+            path = "/orgs/%s/projects" % self.instance.id
 
             # Append to params if we've got tags
             if tags:
@@ -205,16 +207,17 @@ class ProjectManager(Manager):
                 params["tags"] = ",".join(data)
 
             # Append the issue count param to the params if this is the first page
-            if not next_url:
+            if "meta.latest_issue_counts" not in params:
                 params["meta.latest_issue_counts"] = "true"
+            if "expand" not in params:
                 params["expand"] = "target"
 
             # And lastly, make the API call
             resp = self.client.get(
                 path,
-                version="2023-06-19",
+                version="2024-06-21",
                 params=params,
-                exclude_version=True if next_url else False,
+                exclude_version=True if "version" in params else False,
             )
 
             if "data" in resp.json():
@@ -236,17 +239,24 @@ class ProjectManager(Manager):
                 # If we have another page, then process this page too
                 if "next" in resp.json().get("links", {}):
                     next_url = resp.json().get("links", {})["next"]
-                    projects.extend(self._query(tags, next_url))
+                    next_page_params = get_query_params(next_url)
+                    next_params = {**params, **next_page_params}
+                    projects.extend(self._query(tags, params=next_params))
 
             for x in projects:
                 x.organization = self.instance
         else:
             for org in self.client.organizations.all():
-                projects.extend(org.projects.all())
+                projects.extend(org.projects.all(params=params))
         return projects
 
-    def all(self):
-        return self._query()
+    def all(self, params: Dict[str, Any] = {}):
+        tags: List[Dict[str, str]] = []
+        if "tags" in params:
+            tags = params["tags"]
+            del params["tags"]
+
+        return self._query(tags, params=params)
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
         if tags:
