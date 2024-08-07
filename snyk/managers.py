@@ -1,5 +1,5 @@
 import abc
-import json
+import copy
 from typing import Any, Dict, List
 
 from deprecation import deprecated  # type: ignore
@@ -190,26 +190,25 @@ class ProjectManager(Manager):
             .get("id"),
         }
 
-    def _query(self, tags: List[Dict[str, str]] = [], params: Dict[str, Any] = {}):
+    def _query(self, next_url: str = None, params: Dict[str, Any] = {}):
         projects = []
         if "limit" not in params:
-            params["limit"] = 100
+            params["limit"] = 10
 
         if self.instance:
-            path = "/orgs/%s/projects" % self.instance.id
+            path = "/orgs/%s/projects" % self.instance.id if not next_url else next_url
 
             # Append to params if we've got tags
-            if tags:
-                for tag in tags:
+            if "tags" in params:
+                for tag in params["tags"]:
                     if "key" not in tag or "value" not in tag or len(tag.keys()) != 2:
                         raise SnykError("Each tag must contain only a key and a value")
-                data = [f'{d["key"]}:{d["value"]}' for d in tags]
+                data = [f'{d["key"]}:{d["value"]}' for d in params["tags"]]
                 params["tags"] = ",".join(data)
 
             # Append the issue count param to the params if this is the first page
-            if "meta.latest_issue_counts" not in params:
+            if not next_url:
                 params["meta.latest_issue_counts"] = "true"
-            if "expand" not in params:
                 params["expand"] = "target"
 
             # And lastly, make the API call
@@ -217,7 +216,8 @@ class ProjectManager(Manager):
                 path,
                 version="2024-06-21",
                 params=params,
-                exclude_version=True if "version" in params else False,
+                exclude_params=True if next_url else False,
+                exclude_version=True if next_url else False,
             )
 
             if "data" in resp.json():
@@ -239,9 +239,7 @@ class ProjectManager(Manager):
                 # If we have another page, then process this page too
                 if "next" in resp.json().get("links", {}):
                     next_url = resp.json().get("links", {})["next"]
-                    next_page_params = get_query_params(next_url)
-                    next_params = {**params, **next_page_params}
-                    projects.extend(self._query(tags, params=next_params))
+                    projects.extend(self._query(next_url=next_url, params=params))
 
             for x in projects:
                 x.organization = self.instance
@@ -251,18 +249,12 @@ class ProjectManager(Manager):
         return projects
 
     def all(self, params: Dict[str, Any] = {}):
-        tags: List[Dict[str, str]] = []
-        if "tags" in params:
-            tags = params["tags"]
-            del params["tags"]
-
-        return self._query(tags, params=params)
+        copy_params = copy.deepcopy(params)
+        return self._query(params=copy_params)
 
     def filter(self, tags: List[Dict[str, str]] = [], **kwargs: Any):
-        if tags:
-            return self._filter_by_kwargs(self._query(tags), **kwargs)
-        else:
-            return super().filter(**kwargs)
+        params = {**kwargs, **{"tags": tags}}
+        return self.all(params=params)
 
     def get(self, id: str):
         if self.instance:
@@ -421,9 +413,9 @@ class JiraIssueManager(DictManager):
         # The response we get is not following the schema as specified by the api
         # https://snyk.docs.apiary.io/#reference/projects/project-jira-issues-/create-jira-issue
         if (
-            issue_id in response_data
-            and len(response_data[issue_id]) > 0
-            and "jiraIssue" in response_data[issue_id][0]
+                issue_id in response_data
+                and len(response_data[issue_id]) > 0
+                and "jiraIssue" in response_data[issue_id][0]
         ):
             return response_data[issue_id][0]["jiraIssue"]
         raise SnykError

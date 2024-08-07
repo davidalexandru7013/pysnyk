@@ -18,7 +18,8 @@ args = parse_command_line_args()
 org_id = args.orgId
 
 client = SnykClient(token="0add96ab-0ef0-42d9-8373-c6e80458b8dc", debug=True)
-for proj in client.organizations.get(org_id).projects.all(params={"tags":[{"key":"2", "value":"tag3"}]}):
+params = {"tags": [{"key": "2", "value": "tag3"}]}
+for proj in client.organizations.get(org_id).projects.all(params=params):
     tags = proj.tags.all()
     print("\nProject name: %s" % proj.name)
     print("  Issues Found:")
@@ -26,3 +27,6 @@ for proj in client.organizations.get(org_id).projects.all(params={"tags":[{"key"
     print("      Medium: %s" % proj.issueCountsBySeverity.medium)
     print("      Low   : %s" % proj.issueCountsBySeverity.low)
     print("Tags: ", tags)
+
+for proj in client.projects.all(params=params):
+    print("\nProject name: %s" % proj.name)
