@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from deprecation import deprecated  # type: ignore
 
 from .errors import SnykError, SnykNotFoundError, SnykNotImplementedError
-from .utils import snake_to_camel, get_query_params
+from .utils import snake_to_camel
 
 
 class Manager(abc.ABC):
@@ -193,7 +193,7 @@ class ProjectManager(Manager):
     def _query(self, next_url: str = None, params: Dict[str, Any] = {}):
         projects = []
         if "limit" not in params:
-            params["limit"] = 10
+            params["limit"] = 100
 
         if self.instance:
             path = "/orgs/%s/projects" % self.instance.id if not next_url else next_url

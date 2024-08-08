@@ -1,9 +1,8 @@
 import json
-import logging
-import urllib.parse
 from itertools import chain
-from typing import Dict, Any
+from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
+
 
 def snake_to_camel(word):
     return lower_case_first_letter(
@@ -55,6 +54,7 @@ def load_test_data(test_dir: str, test_name: str) -> dict:
     with open(test_file, "r") as the_file:
         data = the_file.read()
     return json.loads(data)
+
 
 def get_query_params(link: str) -> Dict[str, Any]:
     """
