@@ -2,7 +2,6 @@ import copy
 import logging
 import urllib.parse
 from typing import Any, List, Optional
-from urllib.parse import parse_qs, urlparse
 
 import requests
 from retry.api import retry_call

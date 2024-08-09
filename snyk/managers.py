@@ -114,8 +114,8 @@ class OrganizationManager(Manager):
             org.client = self.client
         return orgs
 
-    def __get_all(self, url: str, query_params: Dict[str, Any] = {}):
-        resp = self.client.get(url, params=query_params)
+    def __get_all(self, url: str, query_params: Dict[str, Any] = {}, next_url: str = None):
+        resp = self.client.get(url if next_url is None else next_url, params=query_params if next_url is None else {})
         orgs_data: str = "data"
         links: str = "links"
         orgs = []
@@ -129,10 +129,8 @@ class OrganizationManager(Manager):
             next_body: str = "next"
             if next_body in response_json[links]:
                 next_url = response_json[links][next_body]
-                current_params = extract_query_params_without_version(next_url)
-                next_params = {**query_params, **current_params}
                 # time.sleep(0.1)
-                orgs.extend(self.__get_all(url, next_params))
+                orgs.extend(self.__get_all(url, query_params=query_params, next_url=next_url))
 
         return orgs
 
